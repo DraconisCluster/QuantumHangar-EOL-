@@ -12,6 +12,7 @@
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
     <Deterministic>true</Deterministic>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <PlatformTarget>x86</PlatformTarget>
@@ -32,7 +33,7 @@
     <DefineConstants>TRACE</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <LangVersion>8.0</LangVersion>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup>
     <StartupObject />
@@ -46,7 +47,6 @@
   <ItemGroup>
     <Compile Include="AutoHangar\Autohangar.cs" />
     <Compile Include="Commands\Alliances\AllianceHangerCommands.cs" />
-    <Compile Include="Commands\Faction\FactionHangarAdminCommands.cs" />
     <Compile Include="Commands\Faction\FactionHangerCommands.cs" />
     <Compile Include="Commands\HangarCommandSystem.cs" />
     <Compile Include="Commands\HangarAdminCommands.cs" />
@@ -55,7 +55,6 @@
     <Compile Include="HangarChecks\AdminChecks.cs" />
     <Compile Include="HangarChecks\Alliances\AllianceChecks.cs" />
     <Compile Include="HangarChecks\Alliances\AllianceHanger.cs" />
-    <Compile Include="HangarChecks\Faction\FactionAdminChecks.cs" />
     <Compile Include="HangarChecks\Faction\FactionHanger.cs" />
     <Compile Include="HangarChecks\Faction\FactionChecks.cs" />
     <Compile Include="HangarChecks\Player\PlayerChecks.cs" />
@@ -66,6 +65,8 @@
     <Compile Include="HangarMarket\MarketListing.cs" />
     <Compile Include="Properties\Debug.cs" />
     <Compile Include="Serialization\GridSerializer.cs" />
+    <Compile Include="Utils\CommandCooldownChecker.cs" />
+    <Compile Include="Utils\FileLocker.cs" />
     <Compile Include="Utils\GameEvents.cs" />
     <Compile Include="Utils\ParallelSpawner.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

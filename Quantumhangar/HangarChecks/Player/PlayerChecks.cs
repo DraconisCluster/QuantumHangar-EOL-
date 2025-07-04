@@ -122,8 +122,6 @@ namespace QuantumHangar.HangarChecks
 
             //Calculates incoming grids data
             var gridData = result.GenerateGridStamp();
-
-            var gridPos = gridData.GridSavePosition;
          
 
             //PlayersHanger.CheckGridLimits(GridData);
@@ -133,7 +131,7 @@ namespace QuantumHangar.HangarChecks
                 return;
 
 
-            if (!CheckEnemyDistance(Config.LoadType, _playerPosition, gridPos))
+            if (!CheckEnemyDistance(Config.LoadType, _playerPosition))
                 return;
 
 
@@ -391,7 +389,7 @@ namespace QuantumHangar.HangarChecks
             if (!PlayersHanger.CheckLimits(stamp, grids))
                 return;
 
-            if (!CheckEnemyDistance(Config.LoadType, stamp.GridSavePosition, stamp.GridSavePosition) && !Config.AllowLoadNearEnemy)
+            if (!CheckEnemyDistance(Config.LoadType, stamp.GridSavePosition) && !Config.AllowLoadNearEnemy)
                 return;
 
             if (!RequireLoadCurrency(stamp))
@@ -561,7 +559,7 @@ namespace QuantumHangar.HangarChecks
             return false;
         }
 
-        private bool CheckEnemyDistance(LoadType loadingAtSavePoint, Vector3D position = new Vector3D(), Vector3D gridPos = new Vector3D())
+        private bool CheckEnemyDistance(LoadType loadingAtSavePoint, Vector3D position = new Vector3D())
         {
             if (loadingAtSavePoint == LoadType.ForceLoadMearPlayer) position = _playerPosition;
 
@@ -579,14 +577,8 @@ namespace QuantumHangar.HangarChecks
                     Vector3D pos;
                     if (p.Character.IsUsing is MyCryoChamber || p.Character.IsUsing is MyCockpit)
                         pos = (p.Character.IsUsing as MyCockpit).PositionComp.GetPosition();
-                    else if (p.Character != null)
-                    {
-                        pos = p.Character.PositionComp.GetPosition();
-                    }
                     else
-                    {
-                        pos = gridPos;
-                    }
+                        pos = p.GetPosition();
 
 
                     var playerId = p.Identity.IdentityId;
