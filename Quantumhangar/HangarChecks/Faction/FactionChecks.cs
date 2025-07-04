@@ -9,7 +9,6 @@ using Sandbox.Game.GameSystems.BankingAndCurrency;
 using Sandbox.Game.World;
 using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using Torch.Commands;
 using VRage.Game;
@@ -193,21 +192,6 @@ namespace QuantumHangar.HangarChecks
 
             if (!RequireSaveCurrency(result))
                 return;
-            
-            //cooldown
-            FactionsHanger.SelectedFactionFile.LoadFile(Hangar.MainFactionDirectory, (ulong)FactionsHanger.FactionId);
-            if (!FactionsHanger.CheckPlayerTimeStamp())
-            {
-                _chat?.Respond("Command cooldown is still in affect!");
-                return;
-            }
-            
-            var st = new TimeStamp
-            {
-                OldTime = DateTime.Now
-            };
-            FactionsHanger.SelectedFactionFile.Timer = st;
-            FactionsHanger.SelectedFactionFile.SaveFile();
 
 
             FactionsHanger.SelectedFactionFile.FormatGridName(gridData);
@@ -472,78 +456,39 @@ namespace QuantumHangar.HangarChecks
                 return;
             }
 
-            var file = File.Open(Path.Combine(FactionsHanger.FactionFolderPath, stamp.GridName + ".sbc"), FileMode.Open);
-
-            var myObjectBuilderCubeGrids = grids as MyObjectBuilder_CubeGrid[] ?? grids.ToArray();
-            if (!FactionsHanger.CheckLimits(stamp, myObjectBuilderCubeGrids, _identityId))
-            {
-                file.Close();
+            if (!FactionsHanger.CheckLimits(stamp, grids, _identityId))
                 return;
-            }
-                
 
             if (!CheckEnemyDistance(Config.LoadType, stamp.GridSavePosition) && !Config.AllowLoadNearEnemy)
-            {
-                file.Close();
                 return;
-            }
 
             if (!RequireLoadCurrency(stamp))
-            {
-                file.Close();
                 return;
-            }
-            
-            //cooldown
-            FactionsHanger.SelectedFactionFile.LoadFile(Hangar.MainFactionDirectory, (ulong)FactionsHanger.FactionId);
-            if (!FactionsHanger.CheckPlayerTimeStamp())
-            {
-                _chat?.Respond("Command cooldown is still in affect!");
-                
-                file.Close();
-                return;
-                
-            }
-            
-            var st = new TimeStamp
-            {
-                OldTime = DateTime.Now
-            };
-            FactionsHanger.SelectedFactionFile.Timer = st;
-            FactionsHanger.SelectedFactionFile.SaveFile();
 
-            PluginDependencies.BackupGrid(myObjectBuilderCubeGrids.ToList(), _identityId);
+            PluginDependencies.BackupGrid(grids.ToList(), _identityId);
             var spawnPos = DetermineSpawnPosition(stamp.GridSavePosition, _playerPosition, out var keepOriginalPosition,
                 loadNearPlayer);
 
             if (!CheckDistanceToLoadPoint(spawnPos))
-            {
-                file.Close();
                 return;
-            }
 
             if (PluginDependencies.NexusInstalled && Config.NexusApi &&
                 NexusSupport.RelayLoadIfNecessary(spawnPos, id, loadNearPlayer, _chat, SteamId, _identityId,
                     _playerPosition))
-            {
-                file.Close();
                 return;
-            }
 
-            var spawner = new ParallelSpawner(myObjectBuilderCubeGrids, _chat, SteamId, SpawnedGridsSuccessful);
+            var spawner = new ParallelSpawner(grids, _chat, SteamId, SpawnedGridsSuccessful);
             spawner.setBounds(stamp.BoundingBox, stamp.Box, stamp.MatrixTranslation);
 
             Log.Info("Attempting Grid Spawning @" + spawnPos.ToString());
             if (spawner.Start(spawnPos, keepOriginalPosition))
             {
                 _chat?.Respond("Spawning Complete!");
-                file.Close();
                 FactionsHanger.RemoveGridStamp(id);
                 FactionsHanger.SendWebHookMessage($"{_userCharacter?.DisplayNameText ?? "Name not found"} {SteamId} loaded grid {stamp.GridName}");
             }
             else
             {
-                file.Close();
                 //_chat?.Respond("An error occured while spawning the grid!");
             }
         }
@@ -593,78 +538,39 @@ namespace QuantumHangar.HangarChecks
 
         private bool CheckZoneRestrictions(bool isSave)
         {
-            if (Config.ZoneRestrictions.Count == 0) return true;
-            //Get save point
-            var closestPoint = -1;
-            double distance = -1;
-
-            for (var i = 0; i < Config.ZoneRestrictions.Count(); i++)
+            if (Config.ZoneRestrictions.Count == 0) 
+                return true;
+    
+            foreach (var zone in Config.ZoneRestrictions)
             {
-                var zoneCenter = new Vector3D(Config.ZoneRestrictions[i].X, Config.ZoneRestrictions[i].Y,
-                    Config.ZoneRestrictions[i].Z);
-
+                var zoneCenter = new Vector3D(zone.X, zone.Y, zone.Z);
                 var playerDistance = Vector3D.Distance(zoneCenter, _playerPosition);
 
-                if (playerDistance <= Config.ZoneRestrictions[i].Radius)
+                if (!(playerDistance <= zone.Radius)) continue;
+                var radiusKm = Math.Round(zone.Radius / 1000, 1);
+            
+                switch (isSave)
                 {
-                    //if player is within range
-
-                    if (isSave && !Config.ZoneRestrictions[i].AllowSaving)
-                    {
-                        _chat?.Respond("You are not permitted to save grids in this zone");
+                    case true when !zone.AllowSaving:
+                        _chat?.Respond("Saving grids is not permitted in this area!");
+                        _gpsSender.SendGps(
+                            zoneCenter, 
+                            $"Restricted Area: {zone.Name} (R-{radiusKm}km)", 
+                            _identityId
+                        );
                         return false;
-                    }
-
-                    if (isSave || Config.ZoneRestrictions[i].AllowLoading) return true;
-                    _chat?.Respond("You are not permitted to load grids in this zone");
-                    return false;
-
+                    case false when !zone.AllowLoading:
+                        _chat?.Respond("Loading grids is not permitted in this area!");
+                        _gpsSender.SendGps(
+                            zoneCenter, 
+                            $"Restricted Area: {zone.Name} (R-{radiusKm}km)", 
+                            _identityId
+                        );
+                        return false;
                 }
-
-
-                if (isSave && Config.ZoneRestrictions[i].AllowSaving)
-                    if (closestPoint == -1 || playerDistance <= distance)
-                    {
-                        closestPoint = i;
-                        distance = playerDistance;
-                    }
-
-
-                if (isSave || !Config.ZoneRestrictions[i].AllowLoading) continue;
-                if (closestPoint != -1 && !(playerDistance <= distance)) continue;
-                closestPoint = i;
-                distance = playerDistance;
             }
-
-            Vector3D closestZone;
-            try
-            {
-                closestZone = new Vector3D(Config.ZoneRestrictions[closestPoint].X,
-                    Config.ZoneRestrictions[closestPoint].Y, Config.ZoneRestrictions[closestPoint].Z);
-            }
-            catch (Exception)
-            {
-                _chat?.Respond("No areas found!");
-                //Log.Warn(e, "No suitable zones found! (Possible Error)");
-                return false;
-            }
-
-
-            if (isSave)
-            {
-                _gpsSender.SendGps(closestZone,
-                    Config.ZoneRestrictions[closestPoint].Name + " (within " +
-                    Config.ZoneRestrictions[closestPoint].Radius + "m)", _identityId);
-                _chat?.Respond("Nearest save area has been added to your HUD");
-                return false;
-            }
-            _gpsSender.SendGps(closestZone,
-                Config.ZoneRestrictions[closestPoint].Name + " (within " +
-                Config.ZoneRestrictions[closestPoint].Radius + "m)", _identityId);
-            //Chat chat = new Chat(Context);
-            _chat?.Respond("Nearest load area has been added to your HUD");
-            return false;
-
+            
+            return true;
         }
 
         private bool CheckGravity()
