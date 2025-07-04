@@ -538,78 +538,39 @@ namespace QuantumHangar.HangarChecks
 
         private bool CheckZoneRestrictions(bool isSave)
         {
-            if (Config.ZoneRestrictions.Count == 0) return true;
-            //Get save point
-            var closestPoint = -1;
-            double distance = -1;
-
-            for (var i = 0; i < Config.ZoneRestrictions.Count(); i++)
+            if (Config.ZoneRestrictions.Count == 0) 
+                return true;
+    
+            foreach (var zone in Config.ZoneRestrictions)
             {
-                var zoneCenter = new Vector3D(Config.ZoneRestrictions[i].X, Config.ZoneRestrictions[i].Y,
-                    Config.ZoneRestrictions[i].Z);
-
+                var zoneCenter = new Vector3D(zone.X, zone.Y, zone.Z);
                 var playerDistance = Vector3D.Distance(zoneCenter, _playerPosition);
 
-                if (playerDistance <= Config.ZoneRestrictions[i].Radius)
+                if (!(playerDistance <= zone.Radius)) continue;
+                var radiusKm = Math.Round(zone.Radius / 1000, 1);
+            
+                switch (isSave)
                 {
-                    //if player is within range
-
-                    if (isSave && !Config.ZoneRestrictions[i].AllowSaving)
-                    {
-                        _chat?.Respond("You are not permitted to save grids in this zone");
+                    case true when !zone.AllowSaving:
+                        _chat?.Respond("Saving grids is not permitted in this area!");
+                        _gpsSender.SendGps(
+                            zoneCenter, 
+                            $"Restricted Area: {zone.Name} (R-{radiusKm}km)", 
+                            _identityId
+                        );
                         return false;
-                    }
-
-                    if (isSave || Config.ZoneRestrictions[i].AllowLoading) return true;
-                    _chat?.Respond("You are not permitted to load grids in this zone");
-                    return false;
-
+                    case false when !zone.AllowLoading:
+                        _chat?.Respond("Loading grids is not permitted in this area!");
+                        _gpsSender.SendGps(
+                            zoneCenter, 
+                            $"Restricted Area: {zone.Name} (R-{radiusKm}km)", 
+                            _identityId
+                        );
+                        return false;
                 }
-
-
-                if (isSave && Config.ZoneRestrictions[i].AllowSaving)
-                    if (closestPoint == -1 || playerDistance <= distance)
-                    {
-                        closestPoint = i;
-                        distance = playerDistance;
-                    }
-
-
-                if (isSave || !Config.ZoneRestrictions[i].AllowLoading) continue;
-                if (closestPoint != -1 && !(playerDistance <= distance)) continue;
-                closestPoint = i;
-                distance = playerDistance;
             }
-
-            Vector3D closestZone;
-            try
-            {
-                closestZone = new Vector3D(Config.ZoneRestrictions[closestPoint].X,
-                    Config.ZoneRestrictions[closestPoint].Y, Config.ZoneRestrictions[closestPoint].Z);
-            }
-            catch (Exception)
-            {
-                _chat?.Respond("No areas found!");
-                //Log.Warn(e, "No suitable zones found! (Possible Error)");
-                return false;
-            }
-
-
-            if (isSave)
-            {
-                _gpsSender.SendGps(closestZone,
-                    Config.ZoneRestrictions[closestPoint].Name + " (within " +
-                    Config.ZoneRestrictions[closestPoint].Radius + "m)", _identityId);
-                _chat?.Respond("Nearest save area has been added to your HUD");
-                return false;
-            }
-            _gpsSender.SendGps(closestZone,
-                Config.ZoneRestrictions[closestPoint].Name + " (within " +
-                Config.ZoneRestrictions[closestPoint].Radius + "m)", _identityId);
-            //Chat chat = new Chat(Context);
-            _chat?.Respond("Nearest load area has been added to your HUD");
-            return false;
-
+            
+            return true;
         }
 
         private bool CheckGravity()
