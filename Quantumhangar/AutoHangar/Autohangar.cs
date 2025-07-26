@@ -8,11 +8,13 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Runtime.Remoting.Contexts;
 using System.Threading.Tasks;
 using System.Timers;
 using VRage.Game;
 using VRage.Game.ModAPI;
 using VRage.Network;
+using VRageMath;
 
 namespace QuantumHangar
 {
@@ -55,7 +57,7 @@ namespace QuantumHangar
 
 
         public static void RunAutoHangar(bool saveAll, bool hangarStatic = true, bool hangarLarge = true,
-            bool hangarSmall = true, bool hangarLargest = true)
+            bool hangarSmall = true, bool hangarLargest = true, Vector3? location = null, long distance = 0l)
         {
             if (!Hangar.ServerRunning || !MySession.Static.Ready || MySandboxGame.IsPaused)
                 return;
@@ -77,21 +79,20 @@ namespace QuantumHangar
                     //Funcky SteamID check
                     var lastLogin = identity.LastLoginTime;
                     var steamId = MySession.Static.Players.TryGetSteamId(identity.IdentityId);
+                   
                     if (steamId == 0)
                         continue;
+
                     int lowestValue = Math.Min(Config.AutoHangarDayAmountStation, Math.Min(Config.AutoHangarDayAmountLargeGrid, Config.AutoHangarDayAmountSmallGrid));
                     var lowest = Config.AutoHangarGridsByType ? lowestValue : Config.AutoHangarDayAmount;
 
-                    switch (saveAll)
+
+                    if (saveAll || (lastLogin.AddDays(lowest) < DateTime.Now && !Config.AutoHangarPlayerBlacklist.Any(x => x.SteamId == steamId)))
                     {
-                        //Need to see if we need to check this identity
-                        case true:
-                        case false when lastLogin.AddDays(lowest) < DateTime.Now &&
-                                    !Config.AutoHangarPlayerBlacklist.Any(x => x.SteamId == steamId):
-                            exportPlayerIdentities.Add(identity.IdentityId);
-                            playersOfflineDays[identity.IdentityId] = (int)(DateTime.Now - lastLogin).TotalDays;
-                            break;
+                        exportPlayerIdentities.Add(identity.IdentityId);
+                        playersOfflineDays[identity.IdentityId] = (int)(DateTime.Now - lastLogin).TotalDays;
                     }
+
                 }
 
                 Log.Warn($"AutoHangar Running! Total players to check {exportPlayerIdentities.Count()}");
@@ -108,6 +109,15 @@ namespace QuantumHangar
                     var grids = new List<MyCubeGrid>();
                     foreach (var grid in group.Nodes.Select(groupNodes => groupNodes.NodeData).Where(grid => grid != null && !grid.MarkedForClose && !grid.MarkedAsTrash))
                     {
+                        if (location != null)
+                        {
+                            var gridsDistance = Vector3.Distance(grid.PositionComp.GetPosition(), location.Value);
+                            if (gridsDistance > distance)
+                            {
+                                continue;
+                            }
+                        }
+
                         var owner = GridUtilities.GetBiggestOwner(grid);
                         if (!exportPlayerIdentities.Contains(owner))
                         {
@@ -145,23 +155,25 @@ namespace QuantumHangar
                         //Get biggest grid owner, and see if they are an identity that we need to export
                         gridList.Value.BiggestGrid(out var largestGrid);
                         //No need to autohangar if the largest owner is an NPC
+
                         if (MySession.Static.Players.IdentityIsNpc(gridList.Key))
                             continue;
+
                         var exportedGrids = new List<MyCubeGrid>();
 
                         var staticDays = Config.AutoHangarGridsByType ? Config.AutoHangarDayAmountStation : Config.AutoHangarDayAmount;
                         var largeDays = Config.AutoHangarGridsByType ? Config.AutoHangarDayAmountLargeGrid : Config.AutoHangarDayAmount;
                         var smallDays = Config.AutoHangarGridsByType ? Config.AutoHangarDayAmountSmallGrid : Config.AutoHangarDayAmount;
 
-                        if (hangarStatic && playersOfflineDays[gridList.Key] >= staticDays)
+                        if (hangarStatic && playersOfflineDays[gridList.Key] >= staticDays || (saveAll && hangarStatic))
                         {
                             exportedGrids.AddRange(gridList.Value.Where(x => x.GridSizeEnum == MyCubeSize.Large && x.IsStatic).ToList());
                         }
-                        if (hangarLarge && playersOfflineDays[gridList.Key] >= largeDays)
+                        if (hangarLarge && playersOfflineDays[gridList.Key] >= largeDays || (saveAll && hangarLarge))
                         {
                             exportedGrids.AddRange(gridList.Value.Where(x => x.GridSizeEnum == MyCubeSize.Large && !x.IsStatic).ToList());
                         }
-                        if (hangarSmall && playersOfflineDays[gridList.Key] >= smallDays)
+                        if (hangarSmall && playersOfflineDays[gridList.Key] >= smallDays || (saveAll && hangarSmall))
                         {
                             exportedGrids.AddRange(gridList.Value.Where(x => x.GridSizeEnum == MyCubeSize.Small).ToList());
                         }
