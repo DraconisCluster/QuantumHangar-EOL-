@@ -414,6 +414,7 @@ namespace QuantumHangar.HangarChecks
             FactionsHanger.ListAllGrids();
         }
 
+
         public void DetailedInfo(string input)
         {
             FactionsHanger = new FactionHanger(SteamId, _chat);
@@ -647,8 +648,8 @@ namespace QuantumHangar.HangarChecks
                         continue;
 
                     Vector3D pos;
-                    if (p.Character.IsUsing is MyCryoChamber || p.Character.IsUsing is MyCockpit)
-                        pos = (p.Character.IsUsing as MyCockpit).PositionComp.GetPosition();
+                    if (p.Character.Parent is MyCryoChamber || p.Character.Parent is MyCockpit)
+                        pos = (p.Character.Parent as MyCockpit).PositionComp.GetPosition();
                     else
                         pos = p.GetPosition();
 
@@ -854,6 +855,25 @@ namespace QuantumHangar.HangarChecks
                     return true;
                 }
             }
+        }
+
+        public void SyncHangar(string factionTag)
+        {
+            var faction = MySession.Static.Factions.TryGetFactionByTag(factionTag);
+            if (faction == null)
+            {
+                _chat.Respond("Faction not found");
+                return;
+            }
+
+            var founderSteamId = MySession.Static.Players.TryGetSteamId(faction.FounderId);
+            if (founderSteamId != 0)
+            {
+                var playersHanger = new FactionHanger(founderSteamId, _chat, true);
+                playersHanger.UpdateHangar();
+                _chat.Respond("Syncing?");
+            }
+            _chat.Respond("Couldnt get founders steam id");
         }
     }
 }

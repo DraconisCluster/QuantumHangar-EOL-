@@ -48,6 +48,9 @@ namespace QuantumHangar.HangarChecks
             {
                 MySession.Static.Players.TryGetIdentityFromSteamId(steamId, out var _identity);
                 _faction = MySession.Static.Factions.GetPlayerFaction(_identity.IdentityId);
+
+                
+
                 Log = LogManager.GetLogger($"Hangar.{_faction.Name}");
                 this.FactionId = _faction.FactionId;
                 this._steamId = steamId;
@@ -703,6 +706,8 @@ namespace QuantumHangar.HangarChecks
                 return;
             }
 
+        
+
             var sb = new StringBuilder();
 
             if (_isAdminCalling)
@@ -712,6 +717,7 @@ namespace QuantumHangar.HangarChecks
                 sb.AppendLine("You have " + SelectedFactionFile.Grids.Count() + "/" + SelectedFactionFile.MaxHangarSlots +
                               " stored grids:");
 
+     
             var count = 1;
             foreach (var grid in SelectedFactionFile.Grids)
             {
