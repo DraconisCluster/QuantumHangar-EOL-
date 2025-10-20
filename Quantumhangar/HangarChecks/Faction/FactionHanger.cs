@@ -717,7 +717,7 @@ namespace QuantumHangar.HangarChecks
                 sb.AppendLine("You have " + SelectedFactionFile.Grids.Count() + "/" + SelectedFactionFile.MaxHangarSlots +
                               " stored grids:");
 
-     
+            var servers = NexusApi.GetAllServers();
             var count = 1;
             foreach (var grid in SelectedFactionFile.Grids)
             {
@@ -727,7 +727,9 @@ namespace QuantumHangar.HangarChecks
                 }
                 else
                 {
-                    sb.AppendLine(" [" + count + "] - " + grid.GridName);
+                    var serverId = NexusApi.GetServerIdFromPosition(grid.GridSavePosition);
+                    var serverName = servers[serverId].Name;
+                    sb.AppendLine(" [" + count + "] - ["+ serverName + "] - " + grid.GridName);
                 }
 
                 count++;
@@ -1118,6 +1120,8 @@ namespace QuantumHangar.HangarChecks
             try
             {
                 result.GridName = FileSaver.CheckInvalidCharacters(result.GridName);
+                var serverName = NexusApi.GetThisServer().Name;
+                result.GridName = $"[{serverName}] {result.GridName}";
                 // Log.Warn("Running GridName Checks: {" + GridName + "} :" + Test);
                 if (result.NumberOfGrids > 1)
                 {
