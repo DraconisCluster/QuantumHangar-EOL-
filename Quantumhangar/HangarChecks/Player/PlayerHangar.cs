@@ -699,7 +699,7 @@ namespace QuantumHangar.HangarChecks
             else
                 sb.AppendLine("You have " + SelectedPlayerFile.Grids.Count() + "/" + SelectedPlayerFile.MaxHangarSlots +
                               " stored grids:");
-
+            var servers = NexusApi.GetAllServers();
             var count = 1;
             foreach (var grid in SelectedPlayerFile.Grids)
             {
@@ -709,7 +709,9 @@ namespace QuantumHangar.HangarChecks
                 }
                 else
                 {
-                    sb.AppendLine(" [" + count + "] - " + grid.GridName);
+                    var serverId = NexusApi.GetServerIdFromPosition(grid.GridSavePosition);
+                    var serverName = servers[serverId].Name;
+                    sb.AppendLine(" [" + count + "] - ["+ serverName + "] - " + grid.GridName);
                 }
 
                 count++;
