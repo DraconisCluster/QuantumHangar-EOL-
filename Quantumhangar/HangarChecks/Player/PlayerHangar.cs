@@ -1050,6 +1050,8 @@ namespace QuantumHangar.HangarChecks
             try
             {
                 result.GridName = FileSaver.CheckInvalidCharacters(result.GridName);
+				var serverName = NexusApi.GetThisServer().Name;
+				result.GridName = $"[{serverName}] {result.GridName}";
                 // Log.Warn("Running GridName Checks: {" + GridName + "} :" + Test);
                 if (result.NumberOfGrids > 1)
                 {
