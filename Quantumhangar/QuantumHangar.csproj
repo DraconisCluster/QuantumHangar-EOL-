@@ -78,7 +78,7 @@
     <Compile Include="Utils\CharacterUtilities.cs" />
     <Compile Include="Utils\GridObjExtractor.cs" />
     <Compile Include="Utils\GridUtilities.cs" />
-    <Compile Include="Utils\NexusAPI.cs" />
+    <Compile Include="Utils\NexusApi.cs"/>
     <Compile Include="Utils\PluginDependencies.cs" />
     <Compile Include="Utils\NexusSupport.cs" />
     <Compile Include="Utils\PreviewBoxTimer.cs" />

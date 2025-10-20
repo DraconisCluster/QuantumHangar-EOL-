@@ -1,10 +1,10 @@
-﻿using NLog;
+﻿using System;
+using System.Linq;
+using NLog;
 using ProtoBuf;
 using QuantumHangar.HangarChecks;
 using Sandbox.Engine.Multiplayer;
 using Sandbox.ModAPI;
-using System;
-using System.Linq;
 using VRage.Game;
 using VRageMath;
 using static QuantumHangar.Utils.CharacterUtilities;
@@ -18,30 +18,41 @@ namespace QuantumHangar.Utils
         private static readonly GpsSender GpsSender = new GpsSender();
         private static int _thisServerId = -1;
         private static bool _requireTransfer = true;
-        
-        public static NexusApi Api { get; } = new NexusApi(QuantumHangarNexusModId);
+
+        public static NexusAPI Api { get; } = new NexusAPI(QuantumHangarNexusModId);
         public static bool RunningNexus { get; private set; }
 
         public static void Init()
         {
-            
-            _thisServerId = NexusApi.GetThisServer().ServerId;
-            Log.Info("QuantumHangar -> Nexus integration has been initilized with serverID " + _thisServerId);
-
-            return;
-            if (!NexusApi.IsRunningNexus())
-                return;
-
-            MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(QuantumHangarNexusModId, ReceivePacket);
-            Log.Error("Running Nexus!");
-
-            RunningNexus = true;
-            var thisServer = NexusApi.GetAllServers().FirstOrDefault(x => x.ServerId == _thisServerId);
-
-            if (thisServer.ServerType >= 1)
+            // Only initialize if Nexus is running
+            if (!NexusAPI.IsRunningNexus())
             {
-                _requireTransfer = true;
-                Log.Info("QuantumHangar -> This server is Non-Sectored!");
+                Log.Info("QuantumHangar -> Nexus not detected");
+                RunningNexus = false;
+                return;
+            }
+
+            try
+            {
+                _thisServerId = NexusAPI.GetThisServer().ServerID;
+                Log.Info("QuantumHangar -> Nexus integration has been initialized with serverID " + _thisServerId);
+
+                MyAPIGateway.Multiplayer.RegisterSecureMessageHandler(QuantumHangarNexusModId, ReceivePacket);
+                Log.Info("Running Nexus!");
+
+                RunningNexus = true;
+                var thisServer = NexusAPI.GetAllServers().FirstOrDefault(x => x.ServerID == _thisServerId);
+
+                if (thisServer != null && thisServer.ServerType >= 1)
+                {
+                    _requireTransfer = true;
+                    Log.Info("QuantumHangar -> This server is Non-Sectored!");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ex, "Failed to initialize Nexus integration");
+                RunningNexus = false;
             }
         }
 
@@ -72,11 +83,11 @@ namespace QuantumHangar.Utils
             if (!RunningNexus || !_requireTransfer)
                 return false;
 
-            var target = NexusApi.GetServerIdFromPosition(spawnPos);
+            var target = NexusAPI.GetServerIDFromPosition(spawnPos);
             if (target == _thisServerId)
                 return false;
 
-            if (!NexusApi.IsServerOnline(target))
+            if (!NexusAPI.IsServerOnline(target))
             {
                 chat?.Respond(
                     "Sorry, this grid belongs to another server that is currently offline. Please try again later.");
@@ -157,10 +168,8 @@ namespace QuantumHangar.Utils
                             Position = position,
                             EntityId = entityId,
                             Time = time,
-                            Color= color,
+                            Color = color,
                             desc = desc
-
-
                         };
                         Api.SendMessageToServer(msg.ServerId,
                             MyAPIGateway.Utilities.SerializeToBinary<NexusHangarMessage>(m));
@@ -189,27 +198,26 @@ namespace QuantumHangar.Utils
     [ProtoContract]
     public class NexusHangarMessage
     {
-        [ProtoMember(1)] public NexusHangarMessageType Type;
+        // Relay chat response back: Type == Chat
+        [ProtoMember(8)] public long ChatIdentityId;
+        [ProtoMember(10)] public Color Color;
+        [ProtoMember(16)] public string desc;
+        [ProtoMember(14)] public long EntityId;
 
         // Request to load grid: Type == LoadGrid
         [ProtoMember(2)] public long IdentityId;
         [ProtoMember(3)] public int LoadGridId;
         [ProtoMember(4)] public bool LoadNearPlayer;
-        [ProtoMember(5)] public ulong SteamId;
-        [ProtoMember(6)] public Vector3D PlayerPosition;
-        [ProtoMember(7)] public int ServerId;
-
-        // Relay chat response back: Type == Chat
-        [ProtoMember(8)] public long ChatIdentityId;
-        [ProtoMember(9)] public string Response;
-        [ProtoMember(10)] public Color Color;
-        [ProtoMember(11)] public string Sender;
 
         // Relay send GPS back: Type == SendGPS
         [ProtoMember(12)] public string Name;
+        [ProtoMember(6)] public Vector3D PlayerPosition;
         [ProtoMember(13)] public Vector3D Position;
-        [ProtoMember(14)] public long EntityId;
+        [ProtoMember(9)] public string Response;
+        [ProtoMember(11)] public string Sender;
+        [ProtoMember(7)] public int ServerId;
+        [ProtoMember(5)] public ulong SteamId;
         [ProtoMember(15)] public int Time;
-        [ProtoMember(16)] public string desc;
+        [ProtoMember(1)] public NexusHangarMessageType Type;
     }
 }

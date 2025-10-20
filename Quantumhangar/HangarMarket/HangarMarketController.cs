@@ -1,4 +1,12 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Concurrent;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Reflection;
+using System.Text;
+using System.Timers;
+using Newtonsoft.Json;
 using NLog;
 using QuantumHangar.HangarChecks;
 using QuantumHangar.Serialization;
@@ -8,24 +16,12 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Blocks;
 using Sandbox.Game.GameSystems.BankingAndCurrency;
 using Sandbox.Game.World;
-using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Text;
-using System.Timers;
 
 namespace QuantumHangar.HangarMarket
 {
     public class HangarMarketController
     {
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
-
-        //files will by .json 
-
-        private static Settings Config => Hangar.Config;
         private static string _marketFolderDir;
         public static string PublicOffersDir;
 
@@ -39,10 +35,6 @@ namespace QuantumHangar.HangarMarket
         public static Queue<string> NewFileQueue = new Queue<string>();
 
         public static Timer NewFileTimer = new Timer(500);
-
-
-        // We use this to read new offers
-        public static ClientCommunication Communication { get; private set; }
 
         private static MethodInfo _sendNewProjection;
 
@@ -103,6 +95,14 @@ namespace QuantumHangar.HangarMarket
             _sendNewProjection =
                 typeof(MyProjectorBase).GetMethod("SendNewBlueprint", BindingFlags.NonPublic | BindingFlags.Instance);
         }
+
+        //files will by .json 
+
+        private static Settings Config => Hangar.Config;
+
+
+        // We use this to read new offers
+        public static ClientCommunication Communication { get; private set; }
 
         private static void NewFileTimer_Elapsed(object sender, ElapsedEventArgs e)
         {
@@ -264,7 +264,6 @@ namespace QuantumHangar.HangarMarket
                 Log.Error($"request not valid");
                 return false;
             }
-               
 
 
             //Check if file exists
@@ -298,9 +297,9 @@ namespace QuantumHangar.HangarMarket
             {
                 Log.Error($"file doesnt exists so invalid");
             }
+
             RemoveMarketListing(owner, gridName);
             return false;
-
         }
 
         public static void SetGridPreview(long entityId, ulong owner, string gridName)
@@ -348,7 +347,6 @@ namespace QuantumHangar.HangarMarket
                 Log.Error($"Cant get steam id");
                 return;
             }
-       
 
 
             var buyerBalance = MyBankingSystem.GetBalance(buyerIdentity.Identity.IdentityId);
@@ -377,7 +375,8 @@ namespace QuantumHangar.HangarMarket
             }
             else
             {
-                ownerIdentity = MySession.Static.Players.GetAllIdentities().FirstOrDefault(x =>  owner == MySession.Static.Players.TryGetSteamId(x.IdentityId));
+                ownerIdentity = MySession.Static.Players.GetAllIdentities()
+                    .FirstOrDefault(x => owner == MySession.Static.Players.TryGetSteamId(x.IdentityId));
             }
 
             if (ownerIdentity == null)
@@ -484,7 +483,7 @@ namespace QuantumHangar.HangarMarket
             var footer = fac != null ? $"Seller: [{fac.Tag}] {player.DisplayName}" : $"Seller: {player.DisplayName}";
 
 
-            NexusApi.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
+            NexusAPI.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
                 "#FFFF00");
         }
 
@@ -502,7 +501,8 @@ namespace QuantumHangar.HangarMarket
             }
             else
             {
-                ownerIdentity = MySession.Static.Players.GetAllIdentities().FirstOrDefault(x => newOffer.SteamId == MySession.Static.Players.TryGetSteamId(x.IdentityId));
+                ownerIdentity = MySession.Static.Players.GetAllIdentities().FirstOrDefault(x =>
+                    newOffer.SteamId == MySession.Static.Players.TryGetSteamId(x.IdentityId));
             }
 
             if (ownerIdentity == null)
@@ -517,10 +517,12 @@ namespace QuantumHangar.HangarMarket
 
             var fac = MySession.Static.Factions.GetPlayerFaction(ownerIdentity.IdentityId);
 
-            var footer = fac != null ? $"Seller: [{fac.Tag}] {ownerIdentity.DisplayName}" : $"Seller: {ownerIdentity.DisplayName}";
+            var footer = fac != null
+                ? $"Seller: [{fac.Tag}] {ownerIdentity.DisplayName}"
+                : $"Seller: {ownerIdentity.DisplayName}";
 
 
-            NexusApi.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
+            NexusAPI.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
                 "#FFFF00");
         }
 
@@ -553,7 +555,7 @@ namespace QuantumHangar.HangarMarket
                     : $"Grid {newOffer.Name} was purchased by {buyerIdentity.DisplayName} for {newOffer.Price}sc!");
 
 
-            NexusApi.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
+            NexusAPI.SendEmbedMessageToDiscord(Hangar.Config.MarketUpdateChannel, title, msg.ToString(), footer,
                 "#FFFF00");
         }
     }

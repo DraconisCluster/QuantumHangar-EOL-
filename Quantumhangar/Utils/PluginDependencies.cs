@@ -1,10 +1,7 @@
-﻿using NLog;
-using System;
+﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
+using NLog;
 using Torch.API.Plugins;
 using Torch.Managers;
 using VRage.Game;
@@ -34,8 +31,8 @@ namespace QuantumHangar.Utils
             if (plugins.Plugins.TryGetValue(BlockLimiterGuid, out var blockLimiterPlugin))
                 AcquireBlockLimiter(blockLimiterPlugin);
 
-            //if (plugins.Plugins.TryGetValue(NexusGuid, out var nexusPlugin))
-            //    AcquireNexus(nexusPlugin);
+            if (plugins.Plugins.TryGetValue(NexusGuid, out var nexusPlugin))
+                AcquireNexus(nexusPlugin);
         }
 
         public static void Dispose()
@@ -67,7 +64,7 @@ namespace QuantumHangar.Utils
             _checkFutureLimits = blockLimiterType.GetMethod("CheckLimits_future");
         }
 
-        private static void AcquireNexus(ITorchPlugin plugin)
+        public static void AcquireNexus(ITorchPlugin plugin)
         {
             var nexusMain = DeclareInstalledPlugin(plugin);
             var reflectedServerSideApi = nexusMain?.Assembly.GetType("Nexus.API.PluginAPISync");
@@ -77,7 +74,7 @@ namespace QuantumHangar.Utils
 
 
             reflectedServerSideApi.GetMethod("ApplyPatching", BindingFlags.NonPublic | BindingFlags.Static)
-                ?.Invoke(null, new object[] { typeof(NexusApi), "QuantumHangar" });
+                ?.Invoke(null, new object[] { typeof(NexusAPI), "QuantumHangar" });
 
             NexusSupport.Init();
             NexusInstalled = true;
