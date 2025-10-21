@@ -693,7 +693,7 @@ namespace QuantumHangar.HangarChecks
                     if (serverType == 0)
                     {
                         var serverId = NexusAPI.GetServerIDFromPosition(grid.GridSavePosition);
-                        var serverName = servers[serverId].Name;
+                        var serverName = servers.First(id => id.ServerID == serverId).Name;
                         sb.AppendLine(" [" + count + "] - ["+ serverName + "] - " + grid.GridName);  
                     }
                     else
