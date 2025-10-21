@@ -678,7 +678,7 @@ namespace QuantumHangar.HangarChecks
                 sb.AppendLine("You have " + SelectedAllianceFile.Grids.Count() + "/" + SelectedAllianceFile.MaxHangarSlots +
                               " stored grids:");
 
-            var servers = NexusApi.GetAllServers();
+            var servers = NexusAPI.GetAllServers();
             var count = 1;
             foreach (var grid in SelectedAllianceFile.Grids)
             {
@@ -688,7 +688,7 @@ namespace QuantumHangar.HangarChecks
                 }
                 else
                 {
-                    var serverId = NexusApi.GetServerIdFromPosition(grid.GridSavePosition);
+                    var serverId = NexusAPI.GetServerIDFromPosition(grid.GridSavePosition);
                     var serverName = servers[serverId].Name;
                     sb.AppendLine(" [" + count + "] - ["+ serverName + "] - " + grid.GridName);
                 }
