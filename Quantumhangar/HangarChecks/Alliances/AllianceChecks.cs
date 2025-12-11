@@ -149,7 +149,7 @@ namespace QuantumHangar.HangarChecks
 
             AllianceHanger = new AllianceHanger(SteamId, _chat, this.AllianceId);
             if (AllianceHanger.CheckPlayerTimeStamp()) return true;
-            _chat?.Respond("Command cooldown is still in affect!");
+            _chat?.Respond("Command cooldown is still in effect!");
             return false;
 
 

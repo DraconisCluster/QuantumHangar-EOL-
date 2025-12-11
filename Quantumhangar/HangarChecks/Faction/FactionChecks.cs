@@ -102,7 +102,7 @@ namespace QuantumHangar.HangarChecks
             }
 
             if (FactionsHanger.CheckPlayerTimeStamp()) return true;
-            _chat?.Respond("Command cooldown is still in affect!");
+            _chat?.Respond("Command cooldown is still in effect!");
             return false;
 
 
