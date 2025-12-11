@@ -1,4 +1,10 @@
-﻿using Newtonsoft.Json;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using System.Text.RegularExpressions;
+using System.Threading.Tasks;
+using Newtonsoft.Json;
 using NLog;
 using QuantumHangar.Serialization;
 using QuantumHangar.Utils;
@@ -6,21 +12,11 @@ using Sandbox.Game.Entities;
 using Sandbox.Game.Entities.Character;
 using Sandbox.Game.World;
 using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Windows.Controls;
 using Torch.Mod.Messages;
-using Torch.Mod;
 using VRage.Game;
-using VRage.Game.Factions.Definitions;
 using VRage.Game.ModAPI;
 using VRage.ObjectBuilders;
 using VRageMath;
-using static QuantumHangar.Utils.CharacterUtilities;
 
 namespace QuantumHangar
 {
@@ -104,17 +100,18 @@ namespace QuantumHangar
 
     public class ZoneRestrictions
     {
-        public string Name { get; set; }
+        public string Name { get; set; } = "";
 
-        public bool AllowSaving { get; set; }
-        public bool AllowLoading { get; set; }
+        public bool AllowSaving { get; set; } = true;
+        public bool AllowLoading { get; set; } = true;
+        public bool IsBlacklist { get; set; }
 
 
         public double X { get; set; }
         public double Y { get; set; }
         public double Z { get; set; }
 
-        public double Radius { get; set; }
+        public double Radius { get; set; } = 100;
     }
 
 
@@ -132,46 +129,39 @@ namespace QuantumHangar
 
     public class GridStamp
     {
+        //Server blocklimits Block
+        public Dictionary<string, int> BlockTypeCount = new();
+
+
+        public MyOrientedBoundingBoxD BoundingBox;
+        public BoundingBoxD Box;
+        public bool ForceSpawnNearPlayer;
+        public float GridBuiltPercent;
+        public bool GridForSale;
         public long GridId;
+        public float GridMass;
         public string GridName;
         public int GridPcu;
-        public int ServerPort = 0;
-        public bool GridForSale = false;
+        public Vector3D GridSavePosition = new(0, 0, 0);
+        public long JumpDistance = 0;
+        public int LargeGrids;
         public double MarketValue = 0;
-        public Dictionary<long, int> ShipPcu = new Dictionary<long, int>();
-        public bool ForceSpawnNearPlayer = false;
-        public bool TransferOwnerShipOnLoad = false;
+        public Vector3D MatrixTranslation;
+        public float MaxPowerOutput = 0;
+        public int NumberOfBlocks;
+        public int NumberOfGrids;
 
 
         public string SellerFaction = "N/A";
-        public float GridMass = 0;
-        public int StaticGrids = 0;
+        public int ServerPort = 0;
+        public Dictionary<long, int> ShipPcu = new();
         public int SmallGrids = 0;
-        public int LargeGrids = 0;
-        public int NumberOfBlocks = 0;
-        public float MaxPowerOutput = 0;
-        public float GridBuiltPercent = 0;
-        public long JumpDistance = 0;
-        public int NumberOfGrids = 0;
-        public Vector3D GridSavePosition = new Vector3D(0, 0, 0);
-
-
-        public MyOrientedBoundingBoxD BoundingBox = new MyOrientedBoundingBoxD();
-        public BoundingBoxD Box = new BoundingBoxD();
-        public Vector3D MatrixTranslation = new Vector3D();
-
-
-        //Server blocklimits Block
-        public Dictionary<string, int> BlockTypeCount = new Dictionary<string, int>();
+        public int StaticGrids;
 
 
         //Grid Stored Materials
         public Dictionary<string, double> StoredMaterials = new Dictionary<string, double>();
-
-
-        [JsonIgnore] private static Settings Config => Hangar.Config;
-
-        [JsonIgnore] public string OriginalGridPath { get; }
+        public bool TransferOwnerShipOnLoad;
 
         public GridStamp(List<MyCubeGrid> grids)
         {
@@ -269,6 +259,11 @@ namespace QuantumHangar
         }
 
 
+        [JsonIgnore] private static Settings Config => Hangar.Config;
+
+        [JsonIgnore] public string OriginalGridPath { get; }
+
+
         public void UpdateBiggestGrid(MyCubeGrid biggestGrid)
         {
             GridName = biggestGrid.DisplayName;
@@ -312,7 +307,6 @@ namespace QuantumHangar
                 response.Respond("PCU limit reached! You need an additional " + need +
                                  " pcu to perform this action!");
                 return false;
-
             }
 
 
@@ -386,17 +380,9 @@ namespace QuantumHangar
     {
         private static readonly Logger Log = LogManager.GetCurrentClassLogger();
 
-        public List<MyCubeGrid> Grids = new List<MyCubeGrid>();
-        public MyCubeGrid BiggestGrid;
-        public string GridName;
-        public long BiggestOwner;
-        public ulong OwnerSteamId;
-
-        private readonly bool _isAdmin;
-
 
         /* Following are types that dont have an ownership tied with them */
-        public static List<MyObjectBuilderType> NoOwnerTypes = new List<MyObjectBuilderType>()
+        public static List<MyObjectBuilderType> NoOwnerTypes = new()
         {
             MyObjectBuilderType.Parse("MyObjectBuilder_CubeBlock"),
             MyObjectBuilderType.Parse("MyObjectBuilder_PistonTop"),
@@ -409,6 +395,14 @@ namespace QuantumHangar
             MyObjectBuilderType.Parse("MyObjectBuilder_Passage"),
             MyObjectBuilderType.Parse("MyObjectBuilder_ExhaustBlock")
         };
+
+        private readonly bool _isAdmin;
+        public MyCubeGrid BiggestGrid;
+        public long BiggestOwner;
+        public string GridName;
+
+        public List<MyCubeGrid> Grids = new();
+        public ulong OwnerSteamId;
 
 
         public GridResult(bool admin = false)
@@ -489,7 +483,6 @@ namespace QuantumHangar
                         return false;
                     }
                 }
-           
             }
             else
             {
@@ -513,8 +506,9 @@ namespace QuantumHangar
         {
             var stamp = new GridStamp(Grids);
             stamp.UpdateBiggestGrid(BiggestGrid);
-            GetBoundingBox(Grids, BiggestGrid, OwnerSteamId, out MyOrientedBoundingBoxD obb, out MatrixD matrix, out BoundingBox myAaabb);
-            
+            GetBoundingBox(Grids, BiggestGrid, OwnerSteamId, out var obb, out var matrix,
+                out var myAaabb);
+
             //Save box and matrix. Saves time later on
             stamp.BoundingBox = obb;
             stamp.MatrixTranslation = matrix.Translation;
@@ -523,7 +517,8 @@ namespace QuantumHangar
             return stamp;
         }
 
-        private static void GetBoundingBox(List<MyCubeGrid> Grids, MyCubeGrid BiggestGrid, ulong steamid, out MyOrientedBoundingBoxD OBB, out MatrixD Matrix, out BoundingBox myAabb)
+        private static void GetBoundingBox(List<MyCubeGrid> Grids, MyCubeGrid BiggestGrid, ulong steamid,
+            out MyOrientedBoundingBoxD OBB, out MatrixD Matrix, out BoundingBox myAabb)
         {
             Matrix = BiggestGrid.WorldMatrix;
 
@@ -536,7 +531,8 @@ namespace QuantumHangar
                     continue;
 
                 Quaternion localQuat = Quaternion.CreateFromRotationMatrix(grid.WorldMatrix);
-                MyOrientedBoundingBox localOBB = new MyOrientedBoundingBox(grid.PositionComp.WorldAABB.Center, grid.PositionComp.LocalAABB.HalfExtents, localQuat);
+                var localOBB = new MyOrientedBoundingBox(grid.PositionComp.WorldAABB.Center,
+                    grid.PositionComp.LocalAABB.HalfExtents, localQuat);
                 localOBB.Transform(orientatedMatrix);
                 myAabb.Include(localOBB.GetAABB());
             }
@@ -544,7 +540,8 @@ namespace QuantumHangar
 
             DrawDebug sphere = new DrawDebug("Hangar2");
             Color color = new Color(255, 0, 0, 10);
-            sphere.addOBB(myAabb, Matrix.Translation, Matrix.Forward, Matrix.Up, color, MySimpleObjectRasterizer.Wireframe, 1f, 0.005f);
+            sphere.addOBB(myAabb, Matrix.Translation, Matrix.Forward, Matrix.Up, color,
+                MySimpleObjectRasterizer.Wireframe, 1f, 0.005f);
 
             OBB = new MyOrientedBoundingBoxD(myAabb, Matrix);
         }
@@ -562,8 +559,6 @@ namespace QuantumHangar
             if (steamId != 0) return true;
             Log.Error($"{biggestOwner} doesnt have a steamID!");
             return false;
-
-
         }
     }
 }

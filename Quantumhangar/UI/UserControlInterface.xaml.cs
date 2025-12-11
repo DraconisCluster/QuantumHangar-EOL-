@@ -1,31 +1,15 @@
-﻿using Newtonsoft.Json;
-using NLog;
-using QuantumHangar.HangarMarket;
-using QuantumHangar.Utilities;
-using QuantumHangar.Utils;
-using Sandbox.Game.World;
-using Sandbox.ModAPI;
-using System;
-using System.Collections.Generic;
-using System.Diagnostics;
+﻿using System;
 using System.Globalization;
-using System.IO;
 using System.Linq;
-using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
-using System.Windows.Documents;
-using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
 using System.Windows.Threading;
-using VRage.Game;
-using VRage.ObjectBuilders;
+using NLog;
+using QuantumHangar.HangarMarket;
+using QuantumHangar.Utils;
+using Sandbox.Game.World;
 
 namespace QuantumHangar.UI
 {
@@ -35,10 +19,7 @@ namespace QuantumHangar.UI
     public partial class UserControlInterface : UserControl
     {
         private static readonly Logger Log = LogManager.GetLogger("QuantumHangarUI");
-        //private bool GridLoaded = false;
-        private static Settings Config { get { return Hangar.Config; } }
         // private static GridMarket Market { get { return Hangar.Market; } }
-
 
 
         public static Dispatcher Thread;
@@ -50,28 +31,23 @@ namespace QuantumHangar.UI
             //plugin.PublicOffersAdded.CollectionChanged += PublicOffersAdded_CollectionChanged;
 
 
-
             Thread = Dispatcher;
-            
+
 
             InitializeComponent();
         }
 
+        //private bool GridLoaded = false;
+        private static Settings Config => Hangar.Config;
 
 
         private void TabController_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
-
         }
-
-
-
-
 
 
         private void TextBox_TextChanged(object sender, TextChangedEventArgs e)
         {
-
         }
 
 
@@ -83,8 +59,6 @@ namespace QuantumHangar.UI
 
         private void UpdatePublicOffers()
         {
-
-
             /*
 
             //Update all public offer market items!
@@ -107,7 +81,7 @@ namespace QuantumHangar.UI
             {
                 if (offer.Forsale && (offer.Name != null || offer.Name != ""))
                 {
-                    
+
 
                     string GridFilePath = System.IO.Path.Combine(PublicOfferPath, offer.Name + ".sbc");
                     Hangar.Debug("Blueprint Path: "+ GridFilePath);
@@ -138,7 +112,7 @@ namespace QuantumHangar.UI
                     NewList.Price = offer.Price;
                     NewList.Description = offer.Description;
                     NewList.GridDefinition = Definition;
-                    
+
 
                     NewList.GridBuiltPercent = stamp.GridBuiltPercent;
                     NewList.NumberOfBlocks = stamp.NumberOfBlocks;
@@ -168,11 +142,6 @@ namespace QuantumHangar.UI
 
             */
         }
-
-
-
-
-
 
 
         private void AddNewGpsButton(object sender, RoutedEventArgs e)
@@ -210,6 +179,7 @@ namespace QuantumHangar.UI
                 r.Radius = 100;
                 r.AllowLoading = true;
                 r.AllowSaving = true;
+                r.IsBlacklist = false;
 
                 Config.ZoneRestrictions.Add(r);
 
@@ -228,7 +198,6 @@ namespace QuantumHangar.UI
             {
                 Config.ZoneRestrictions.Remove(selectedItem);
                 Config.RefreshModel();
-
             }
         }
 
@@ -237,9 +206,10 @@ namespace QuantumHangar.UI
             Config.RefreshModel();
         }
 
-
-
-
+        private void ZoneGridCellEditEnding(object sender, DataGridCellEditEndingEventArgs e)
+        {
+            Dispatcher.BeginInvoke(new Action(() => Config.RefreshModel()), DispatcherPriority.Background);
+        }
 
 
         private void AddNewBlacklistPlayer(object sender, RoutedEventArgs e)
@@ -267,16 +237,18 @@ namespace QuantumHangar.UI
 
                 try
                 {
-                    MyIdentity player = MySession.Static.Players.GetAllIdentities().First(x => x.DisplayName.Equals(AutoHangarNameBox.Text));
+                    var player = MySession.Static.Players.GetAllIdentities()
+                        .First(x => x.DisplayName.Equals(AutoHangarNameBox.Text));
                     b.SteamId = MySession.Static.Players.TryGetSteamId(player.IdentityId);
-                    
                 }
                 catch
                 {
                     Log.Warn("Unable to find given character. Enter SteamID in manually");
                 }
+
                 Config.AutoHangarPlayerBlacklist.Add(b);
             }
+
             AutoHangarNameBox.Text = "";
             Config.RefreshModel();
         }
@@ -299,8 +271,8 @@ namespace QuantumHangar.UI
         private void ServerOffers_SelectionChanged(object sender, SelectionChangedEventArgs e)
         {
             /* Server offers selection changes */
-            
-            if(ServerOffers.SelectedItem == null)
+
+            if (ServerOffers.SelectedItem == null)
             {
                 ServerOfferConfigBox.DataContext = null;
                 ServerOfferConfigBox.Visibility = Visibility.Hidden;
@@ -321,14 +293,13 @@ namespace QuantumHangar.UI
 
         private void NewPublicOfferButton(object sender, RoutedEventArgs e)
         {
-            var listing = new HangarMarket.MarketListing();
+            var listing = new MarketListing();
             listing.ServerOffer = true;
             listing.ForSale = true;
 
             //Hangar.Config.PublicMarketOffers.Add(Listing);
         }
     }
-
 }
 
 namespace QuantumHangar.Converters
@@ -336,7 +307,8 @@ namespace QuantumHangar.Converters
     public class EnumBooleanConverter : IValueConverter
     {
         #region IValueConverter Members
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
             string parameterString = parameter as string;
             if (parameterString == null)
@@ -350,7 +322,7 @@ namespace QuantumHangar.Converters
             return parameterValue.Equals(value);
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             string parameterString = parameter as string;
             if (parameterString == null)
@@ -358,36 +330,54 @@ namespace QuantumHangar.Converters
 
             return Enum.Parse(targetType, parameterString);
         }
+
         #endregion
     }
 
-    
+
     public class TextToBoolConverter : IValueConverter
     {
         #region IValueConverter Members
 
         public object Convert(object value, Type targetType, object parameter,
-            System.Globalization.CultureInfo culture)
+            CultureInfo culture)
         {
             if (value is bool)
             {
                 return !(bool)value;
             }
+
             return value;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter,
-            System.Globalization.CultureInfo culture)
+            CultureInfo culture)
         {
             if (value is bool)
             {
                 return !(bool)value;
             }
+
             return value;
         }
 
         #endregion
     }
-    
 
+    public class MetersToKilometersConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (value is double meters) return meters / 1000.0;
+
+            return value;
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+        {
+            if (double.TryParse(value?.ToString(), out var kilometers)) return kilometers * 1000.0;
+
+            return value;
+        }
+    }
 }
