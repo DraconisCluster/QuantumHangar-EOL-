@@ -1,4 +1,8 @@
-﻿using System;
+﻿using NLog;
+using QuantumHangar.HangarMarket;
+using QuantumHangar.Utils;
+using Sandbox.Game.World;
+using System;
 using System.Globalization;
 using System.Linq;
 using System.Text.RegularExpressions;
@@ -6,10 +10,6 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Threading;
-using NLog;
-using QuantumHangar.HangarMarket;
-using QuantumHangar.Utils;
-using Sandbox.Game.World;
 
 namespace QuantumHangar.UI
 {
